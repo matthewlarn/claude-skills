@@ -1,4 +1,4 @@
-# I Built 27 Claude Skills to Fix the "Vibe Design" Accessibility Gap
+# I Built 33 Claude Skills to Fix the "Vibe Design" Accessibility Gap
 
 **Why AI-generated prototypes are almost never accessible by default, and how I built a system to codify the manual fixes**
 
@@ -6,7 +6,7 @@ I've been vibe designing for months now, and one thing I've noticed is that the 
 
 There is always something: tiny text that is hard to read, inaccessible contrast ratios, or zero keyboard support. The prototypes look great at a glance, but they fail the moment you look under the hood. As I set out to improve the prototypes I was building for my clients, I started saving my manual fixes as I went.
 
-Eventually, those fixes became a suite of 27 Claude skills designed to close the gap between a "cool demo" and a usable product.
+Eventually, those fixes became a suite of 33 Claude skills designed to close the gap between a "cool demo" and a usable product.
 
 ## The 70% Coverage Gap
 
@@ -30,9 +30,11 @@ Before you audit anything, you need to know what applies and how to get buy-in.
 
 **WCAG Checklist** generates scoped checklists by product type. Instead of dumping all 86 WCAG 2.2 criteria on a team regardless of context, it asks what you're building and gives you the criteria that actually apply, with effort estimates and severity ratings for each one.
 
+**Futures Wheel** keeps teams from stopping at the obvious fix. It maps first-, second-, and third-order consequences so you can see how an accessibility decision will ripple through the product, the workflow, and the people using it.
+
 ## Stage 2: Audit — The Specialist Skills
 
-This is the core of the suite — 16 skills that cover every dimension of accessibility, from design to code to content to compliance.
+This is the core of the suite — 18 skills that cover every dimension of accessibility, from design to code to content to compliance.
 
 **The Orchestrator: Full Accessibility Audit.** This is the system-level intelligence layer. You can give it a design, code, screenshot, or form flow, and it decides which specialists are relevant. A copy-heavy landing page triggers the Copy and Cognitive specialists. A complex dashboard triggers Forms, Code, Keyboard, and Contrast. The output is a single structured report with severity ratings, WCAG references, and a phased remediation roadmap. The hard rule: it never claims "full compliance" without real manual AT testing. False confidence is dangerous.
 
@@ -49,6 +51,8 @@ This is the core of the suite — 16 skills that cover every dimension of access
 **Component and Interaction Specialists.** The suite includes dedicated specialists for the patterns that break most often: **Accessible Forms** covers labels, validation timing, error recovery, multi-step flows, and date pickers. **Accessible Tables** handles complex headers, responsive strategies, and data grids. **Contrast Checker** does luminance math across all states including hover, focus, disabled, and dark mode, with APCA as a secondary reference. **Alt Text Generator** writes context-aware descriptions that distinguish decorative from informative from functional images. **Keyboard & Focus Auditor** covers tab order, focus traps, roving tabindex, and Windows High Contrast Mode. **Motion Auditor** tests seizure thresholds, vestibular harm, and prefers-reduced-motion implementation. **Mobile & Touch Auditor** handles touch targets, gesture alternatives, and platform-specific VoiceOver and TalkBack testing.
 
 **Document and Media Specialists.** **PDF Document Accessibility** audits tagged PDF structure and remediation workflows. **Video & Media Accessibility** covers captions, transcripts, audio description writing, and accessible media player controls. **Disability Testing** provides 11 disability-specific profiles with simulation tools and guidance on recruiting disabled testers.
+
+**Prototype and system reviewers.** **Design Review Cowork** gives a multi-perspective critique of prototypes with readiness scoring, Ship/No Ship guidance, and actionable fixes. **Design System Drift** looks for accessibility regressions in tokens, components, and implementation so the system stays coherent as it scales.
 
 ## Stage 3: Audience — Who Are You Building For?
 
@@ -68,6 +72,8 @@ Accessibility is one dimension of building products that don't cause harm. These
 
 **Privacy-First Design Auditor** audits data minimization, consent flows, third-party SDKs, and cookie patterns against GDPR, CCPA, and emerging state-level regulation. It treats privacy as a trust contract, not a compliance checkbox.
 
+**Black Mirror Auditor** pressure-tests worst-case futures and unintended-harm scenarios so teams can see where a product could go off the rails. **Gamification Auditor** evaluates engagement mechanics for manipulation, addiction patterns, and dark-pattern risk.
+
 ## Stage 5: Test — Making the Findings Stick
 
 Auditing is only useful if someone verifies the fixes. This stage has three skills that cover planning, browser-level verification, and assistive technology scripting.
@@ -81,6 +87,8 @@ Auditing is only useful if someone verifies the fixes. This stage has three skil
 ## Stage 6: Handoff — Bridging Design and Engineering
 
 **Accessibility Annotations** produces the annotation content that goes into Figma files or design specs for developer handoff: focus order numbers, ARIA roles and labels, landmark regions, heading levels, keyboard behavior specs, and interaction state documentation. This is the skill that prevents the "the design was accessible, but the developer didn't know what to build" failure mode.
+
+**Design Handoff** turns the audit and fix work into polished handoff documentation so the team can move from findings to implementation without losing context.
 
 ## What the Skills Still Can't Replace
 
