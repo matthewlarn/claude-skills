@@ -147,7 +147,7 @@ if command -v agy >/dev/null 2>&1; then
   fi
 fi
 if has_openrouter; then
-  POOL+=(glm deepseek mimo minimax qwen devstral laguna kat north nemotron spark)
+  POOL+=(glm deepseek mimo minimax qwen devstral laguna kat north nemotron spark seed grok)
 fi
 # kimi27 (k2.7-code) rides the DIRECT Moonshot API — a deliberate rotation
 # seat (2026-07-03, per Gabriel), not an OpenRouter fallback for the kimi

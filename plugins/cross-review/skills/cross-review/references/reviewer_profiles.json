@@ -123,7 +123,7 @@
     "timeout_s": 600,
     "provider": "deepseek",
     "cli": "openrouter",
-    "model": "deepseek/deepseek-v4-flash",
+    "model": "deepseek/deepseek-v4-pro-0813",
     "retry_policy": "retry_on_transient",
     "prompt_style": "diff_only_no_tools",
     "severity_priors": {
@@ -133,8 +133,8 @@
       "Low": "skip_unless_convergent"
     },
     "synthesis_weight": 0.8,
-    "specialization": "single-turn diff reasoning, fast tier; independent provider vote (DeepSeek). Rotation-pool member. Also the designated OpenRouter substitute for the fact-check pass when agy is down.",
-    "notes": "DeepSeek V4 Flash via OpenRouter. Added 2026-07-01, rookie \u2014 priors conservative until leaderboard data accumulates. China-origin provider (DeepSeek), routed through OpenRouter (US) \u2014 surface both for security-sensitive repos."
+    "specialization": "single-turn diff reasoning, reasoning tier; independent provider vote (DeepSeek). Rotation-pool member. Also the designated OpenRouter substitute for the fact-check pass when agy is down.",
+    "notes": "DeepSeek V4 Pro (0813) via OpenRouter ($0.43/M in, $0.87/M out, 1M ctx). Added 2026-07-01 as V4 Flash; **upgraded to V4 Pro 2026-08-14** because the Flash seat was the worst paid performer on the board (score 52 over 6 runs \u2014 3 findings, 0 convergent, 2 disproven). Pro is ~3x Flash's price and still among the cheapest paid seats; the bet is that the disproven rate was a capability floor, not a prompt problem. Reset expectations: treat pre-2026-08-14 deepseek leaderboard rows as a different model. China-origin provider (DeepSeek), routed through OpenRouter (US) \u2014 surface both for security-sensitive repos."
   },
   "mimo": {
     "timeout_s": 600,
@@ -233,7 +233,7 @@
     "timeout_s": 600,
     "provider": "kuaishou",
     "cli": "openrouter",
-    "model": "kwaipilot/kat-coder-pro-v2",
+    "model": "kwaipilot/kat-coder-pro-v2.5",
     "retry_policy": "retry_on_transient",
     "prompt_style": "diff_only_no_tools",
     "severity_priors": {
@@ -244,7 +244,7 @@
     },
     "synthesis_weight": 0.75,
     "specialization": "single-turn diff reasoning; independent provider vote (Kuaishou). Rotation-pool member.",
-    "notes": "KAT-Coder-Pro V2 via OpenRouter ($0.30/M in, $1.20/M out; Kuaishou's enterprise coding model). Added 2026-07-02, rookie \u2014 priors conservative until leaderboard data accumulates. China-origin provider (Kuaishou), routed through OpenRouter (US) \u2014 surface both for security-sensitive repos."
+    "notes": "KAT-Coder-Pro V2.5 via OpenRouter ($0.74/M in, $2.96/M out; Kuaishou's enterprise coding model). Added 2026-07-02 as V2; **bumped to V2.5 2026-08-14** (released 2026-07-10) \u2014 the V2 seat scored 91 with a 2s p50, so this is a version refresh on a healthy seat, not a rescue. Price roughly 2.5x V2's; still mid-pool. Carry the V2 leaderboard history forward, but expect the latency profile to shift. China-origin provider (Kuaishou), routed through OpenRouter (US) \u2014 surface both for security-sensitive repos."
   },
   "north": {
     "timeout_s": 600,
@@ -269,7 +269,7 @@
     "timeout_s": 600,
     "provider": "nvidia",
     "cli": "openrouter",
-    "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+    "model": "nvidia/nemotron-3.5-lightning:free",
     "retry_policy": "retry_on_transient",
     "prompt_style": "diff_only_no_tools",
     "severity_priors": {
@@ -279,8 +279,8 @@
       "Low": "skip_unless_convergent"
     },
     "synthesis_weight": 0.75,
-    "specialization": "single-turn diff reasoning, large-parameter tier; independent provider vote (NVIDIA). Rotation-pool member. FREE tier \u2014 zero marginal cost.",
-    "notes": "NVIDIA Nemotron 3 Ultra 550B (:free tier) via OpenRouter. Added 2026-07-01, rookie. Free-tier caveat: OpenRouter free routes can be rate-limited or have data-retention terms that differ from paid \u2014 check the route's terms for security-sensitive repos. US-origin provider (NVIDIA). 2026-07-03: sampled failures fall in a machine-sleep window (pmset Dark Wake thermal churn; wall clock overran enforced budgets \u2014 see wall_over_budget/sleep_suspect telemetry). Record is contaminated; do NOT cut or tune on that data \u2014 re-evaluate after clean rounds."
+    "specialization": "single-turn diff reasoning, fast tier, 1M context; independent provider vote (NVIDIA). Rotation-pool member. FREE tier \u2014 zero marginal cost.",
+    "notes": "NVIDIA Nemotron 3.5 Lightning (:free tier, 1M ctx) via OpenRouter. Added 2026-07-01 as Nemotron 3 Ultra 550B; **swapped to 3.5 Lightning 2026-08-14** (released 2026-08-11) \u2014 the Ultra seat sat at score 25 on 1-of-3 reliability, and that record is sleep-contaminated (below) rather than a clean capability signal, so a same-vendor, same-price (free) refresh is the cheapest way to get a clean read. Treat the seat as a rookie again: pre-2026-08-14 rows are a different model. Free-tier caveat: OpenRouter free routes can be rate-limited or have data-retention terms that differ from paid \u2014 check the route's terms for security-sensitive repos. US-origin provider (NVIDIA). 2026-07-03: sampled failures fall in a machine-sleep window (pmset Dark Wake thermal churn; wall clock overran enforced budgets \u2014 see wall_over_budget/sleep_suspect telemetry). Record is contaminated; do NOT cut or tune on that data \u2014 re-evaluate after clean rounds."
   },
   "spark": {
     "timeout_s": 600,
@@ -298,6 +298,42 @@
     "synthesis_weight": 0.75,
     "specialization": "single-turn diff reasoning; independent provider vote (Meta). Rotation-pool member.",
     "notes": "Meta Muse Spark 1.1 via OpenRouter ($1.25/M in, $4.25/M out; Meta Superintelligence Labs' first paid model, multimodal/agentic-oriented natively but run here diff-only-no-tools like the rest of the OR pool). Added 2026-07-19, rookie \u2014 priors conservative until leaderboard data accumulates. US-origin provider (Meta), routed through OpenRouter (US)."
+  },
+  "seed": {
+    "timeout_s": 600,
+    "provider": "bytedance",
+    "cli": "openrouter",
+    "model": "bytedance-seed/seed-2.0-code",
+    "retry_policy": "retry_on_transient",
+    "prompt_style": "diff_only_no_tools",
+    "severity_priors": {
+      "Critical": "trust_if_convergent",
+      "High": "verify",
+      "Medium": "verify",
+      "Low": "skip_unless_convergent"
+    },
+    "synthesis_weight": 0.75,
+    "draw_boost": 2.5,
+    "specialization": "single-turn diff reasoning, code-specialized tier; independent provider vote (ByteDance). Rotation-pool member.",
+    "notes": "ByteDance Seed 2.0 Code via OpenRouter ($0.50/M in, $3.00/M out, 262k ctx; released 2026-08-12). Added 2026-08-14 — ByteDance was unrepresented in the roster, so this is a genuinely new lab vote rather than another sample of an existing family. draw_boost 2.5 while it earns leaderboard data; retire the boost after ~10 sampled runs per the kimi27/kimi3 precedent. Rookie priors — conservative until data accumulates. China-origin provider (ByteDance), routed through OpenRouter (US) — surface both for security-sensitive repos."
+  },
+  "grok": {
+    "timeout_s": 600,
+    "provider": "xai",
+    "cli": "openrouter",
+    "model": "x-ai/grok-4.6",
+    "retry_policy": "retry_on_transient",
+    "prompt_style": "diff_only_no_tools",
+    "severity_priors": {
+      "Critical": "trust_if_convergent",
+      "High": "verify",
+      "Medium": "verify",
+      "Low": "skip_unless_convergent"
+    },
+    "synthesis_weight": 0.75,
+    "draw_boost": 2.5,
+    "specialization": "single-turn diff reasoning, frontier tier, 500k context; independent provider vote (xAI). Rotation-pool member.",
+    "notes": "xAI Grok 4.6 via OpenRouter ($2.00/M in, $6.00/M out, 500k ctx; released 2026-08-12). Added 2026-08-14 — xAI held zero seats, so this closes the last major frontier-lab gap in the fleet. Priciest OR-pool seat after spark; select_roster.sh already divides weight by avg cost, so it will self-throttle if it proves expensive per finding. draw_boost 2.5 while it earns leaderboard data; retire after ~10 sampled runs. US-origin provider (xAI), routed through OpenRouter (US)."
   },
   "_synthesis_rules": {
     "skip_unless_convergent": "Drop a single-reviewer finding at this severity unless another reviewer flagged the same file/area.",

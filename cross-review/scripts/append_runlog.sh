@@ -215,7 +215,8 @@ enrich_with_findings() {
       "kimi":"moonshot","glm":"zhipu","deepseek":"deepseek","mimo":"xiaomi",
       "minimax":"minimax","qwen":"alibaba","devstral":"mistral",
       "laguna":"poolside","kat":"kuaishou","north":"cohere","nemotron":"nvidia",
-      "spark":"meta","kimi27":"moonshot","kimi3":"moonshot"}) as $prov
+      "spark":"meta","seed":"bytedance","grok":"xai",
+      "kimi27":"moonshot","kimi3":"moonshot"}) as $prov
     | [(.findings // [])[] | select((.sources // []) | index($r))] as $mine
     | { findings_total: ($mine | length),
         findings_convergent: ($mine | map(select(
@@ -244,6 +245,8 @@ kat_json=$(enrich_with_findings kat "$(reviewer_obj kat)")
 north_json=$(enrich_with_findings north "$(reviewer_obj north)")
 nemotron_json=$(enrich_with_findings nemotron "$(reviewer_obj nemotron)")
 spark_json=$(enrich_with_findings spark "$(reviewer_obj spark)")
+seed_json=$(enrich_with_findings seed "$(reviewer_obj seed)")
+grok_json=$(enrich_with_findings grok "$(reviewer_obj grok)")
 kimi27_json=$(enrich_with_findings kimi27 "$(reviewer_obj kimi27)")
 kimi3_json=$(enrich_with_findings kimi3 "$(reviewer_obj kimi3)")
 
@@ -276,6 +279,8 @@ entry=$(jq -nc \
   --argjson north "$north_json" \
   --argjson nemotron "$nemotron_json" \
   --argjson spark "$spark_json" \
+  --argjson seed "$seed_json" \
+  --argjson grok "$grok_json" \
   --argjson kimi27 "$kimi27_json" \
   --argjson kimi3 "$kimi3_json" \
   --arg run_id "$run_id" \
@@ -292,7 +297,8 @@ entry=$(jq -nc \
     reviewers: {codex: $codex, antigravity: $antigravity, "gemini-pro": $gemini_pro, kimi: $kimi, glm: $glm,
                 deepseek: $deepseek, mimo: $mimo, minimax: $minimax, qwen: $qwen,
                 devstral: $devstral, laguna: $laguna, kat: $kat, north: $north, nemotron: $nemotron,
-                spark: $spark, kimi27: $kimi27, kimi3: $kimi3},
+                spark: $spark, seed: $seed, grok: $grok,
+                kimi27: $kimi27, kimi3: $kimi3},
     convergent_count: $convergent,
     verdict: $verdict,
     top_finding: (if $top == "" then null else $top end),

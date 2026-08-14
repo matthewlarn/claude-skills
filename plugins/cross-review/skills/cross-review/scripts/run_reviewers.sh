@@ -14,16 +14,18 @@
 #
 # OpenRouter lane (rotating single-turn reviewers — NO fallbacks):
 #   glm      — z-ai/glm-5.2                        (Zhipu)
-#   deepseek — deepseek/deepseek-v4-flash          (DeepSeek)
+#   deepseek — deepseek/deepseek-v4-pro-0813       (DeepSeek)
 #   mimo     — xiaomi/mimo-v2.5                    (Xiaomi)
 #   minimax  — minimax/minimax-m3                  (MiniMax)
 #   qwen     — qwen/qwen3-coder-next               (Alibaba)
 #   devstral — mistralai/devstral-2512             (Mistral)
 #   laguna   — poolside/laguna-m.1                 (Poolside)
-#   kat      — kwaipilot/kat-coder-pro-v2          (Kuaishou)
+#   kat      — kwaipilot/kat-coder-pro-v2.5        (Kuaishou)
 #   north    — cohere/north-mini-code:free         (Cohere — free tier)
-#   nemotron — nvidia/nemotron-3-ultra-550b-a55b:free (NVIDIA — free tier)
+#   nemotron — nvidia/nemotron-3.5-lightning:free  (NVIDIA — free tier)
 #   spark    — meta/muse-spark-1.1                 (Meta)
+#   seed     — bytedance-seed/seed-2.0-code       (ByteDance)
+#   grok     — x-ai/grok-4.6                      (xAI)
 #   All are single-turn diff-inline reviews (same niche as kimi), each an
 #   independent provider vote. Key resolution: $OPENROUTER_API_KEY env var,
 #   else ~/.config/openrouter/key. No key → all eleven are skipped.
@@ -46,7 +48,7 @@
 #
 # Usage:
 #   run_reviewers.sh --base <branch> --out <dir>
-#                    [--reviewers codex,antigravity,gemini-pro,kimi,glm,deepseek,mimo,minimax,qwen,devstral,laguna,kat,north,nemotron,spark]
+#                    [--reviewers codex,antigravity,gemini-pro,kimi,glm,deepseek,mimo,minimax,qwen,devstral,laguna,kat,north,nemotron,spark,seed,grok]
 #                    [--timeout <sec>]
 #                    [--timeout-codex <sec>] [--timeout-antigravity <sec>]
 #                    [--timeout-gemini-pro <sec>] [--timeout-kimi <sec>]
@@ -93,7 +95,8 @@
 #   <out>/kimi.meta.json
 #   <out>/<or>.stdout          — each OpenRouter reviewer (glm, deepseek, mimo,
 #   <out>/<or>.stderr            minimax, qwen, devstral, laguna, kat,
-#   <out>/<or>.meta.json         north, nemotron, spark) writes
+#   <out>/<or>.meta.json         north, nemotron, spark, seed,
+#                              grok) writes
 #                                stdout/stderr/meta plus request.json and
 #                                response.json for audit
 #   <out>/kimi27.*, kimi3.*    — direct-Moonshot rotation seats (same
@@ -174,7 +177,8 @@ timeout_glm=""
 # The names below are the API-lane reviewers whose model comes from the profile.
 # Resolution happens after profile_get is defined, further down.
 model_backed_reviewers=(antigravity gemini-pro glm deepseek mimo minimax qwen
-                        devstral laguna kat north nemotron spark kimi27 kimi3)
+                        devstral laguna kat north nemotron spark seed grok
+                        kimi27 kimi3)
 
 # Antigravity installs `agy` to $HOME/.local/bin. That directory isn't always
 # on $PATH for non-interactive shells (notably bash invocations from other
@@ -210,7 +214,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -z "$base" || -z "$out" ]]; then
-  echo "usage: $0 --base <branch> --out <dir> [--reviewers codex,antigravity,gemini-pro,kimi,glm,deepseek,mimo,minimax,qwen,devstral,laguna,kat,north,nemotron,spark] [--timeout <sec>] [--timeout-codex <sec>] [--timeout-antigravity <sec>] [--timeout-gemini-pro <sec>] [--timeout-kimi <sec>] [--timeout-glm <sec>] [--snapshot-dir <dir>]" >&2
+  echo "usage: $0 --base <branch> --out <dir> [--reviewers codex,antigravity,gemini-pro,kimi,glm,deepseek,mimo,minimax,qwen,devstral,laguna,kat,north,nemotron,spark,seed,grok] [--timeout <sec>] [--timeout-codex <sec>] [--timeout-antigravity <sec>] [--timeout-gemini-pro <sec>] [--timeout-kimi <sec>] [--timeout-glm <sec>] [--snapshot-dir <dir>]" >&2
   exit 2
 fi
 
@@ -270,6 +274,8 @@ kat_profile="$(profile_timeout kat)"
 north_profile="$(profile_timeout north)"
 nemotron_profile="$(profile_timeout nemotron)"
 spark_profile="$(profile_timeout spark)"
+seed_profile="$(profile_timeout seed)"
+grok_profile="$(profile_timeout grok)"
 kimi27_profile="$(profile_timeout kimi27)"
 kimi3_profile="$(profile_timeout kimi3)"
 codex_timeout="${timeout_codex:-${timeout_s:-${codex_profile:-$(( timeout_s_default < 300 ? timeout_s_default : 300 ))}}}"
@@ -292,6 +298,8 @@ kat_timeout="${timeout_s:-${kat_profile:-$timeout_s_default}}"
 north_timeout="${timeout_s:-${north_profile:-$timeout_s_default}}"
 nemotron_timeout="${timeout_s:-${nemotron_profile:-$timeout_s_default}}"
 spark_timeout="${timeout_s:-${spark_profile:-$timeout_s_default}}"
+seed_timeout="${timeout_s:-${seed_profile:-$timeout_s_default}}"
+grok_timeout="${timeout_s:-${grok_profile:-$timeout_s_default}}"
 kimi27_timeout="${timeout_s:-${kimi27_profile:-$timeout_s_default}}"
 kimi3_timeout="${timeout_s:-${kimi3_profile:-$timeout_s_default}}"
 
@@ -720,12 +728,13 @@ moonshot_key() {
 # and prompt shape as run_kimi, and the same stdin/argv reasoning: the prompt
 # body goes through a temp file + jq --rawfile, never argv). This is the shared
 # runner for the whole OpenRouter rotation pool (glm, deepseek, mimo, minimax,
-# qwen, devstral, laguna, kat, north, nemotron, spark) — each an independent provider
+# qwen, devstral, laguna, kat, north, nemotron, spark, seed, grok) — each an
+# independent provider
 # vote. It is NOT a fallback lane for the
 # first-party reviewers (policy: no OR fallbacks for codex/gemini/kimi).
 # Args:
 #   $1 slug           (glm | deepseek | mimo | minimax | qwen | devstral |
-#                      laguna | kat | north | nemotron | spark | kimi27 | kimi3)
+#                      laguna | kat | north | nemotron | spark | seed | grok | kimi27 | kimi3)
 #   $2 model          (model id, e.g. z-ai/glm-5.2 or kimi-k2.7-code)
 #   $3 timeout_budget (seconds)
 #   $4 endpoint       (optional; default OpenRouter chat-completions. kimi27/
@@ -1308,6 +1317,8 @@ run_kat()      { run_openrouter_reviewer kat      "$kat_model"      "$kat_timeou
 run_north()    { run_openrouter_reviewer north    "$north_model"    "$north_timeout"; }
 run_nemotron() { run_openrouter_reviewer nemotron "$nemotron_model" "$nemotron_timeout"; }
 run_spark()    { run_openrouter_reviewer spark    "$spark_model"    "$spark_timeout"; }
+run_seed()     { run_openrouter_reviewer seed     "$seed_model"     "$seed_timeout"; }
+run_grok()     { run_openrouter_reviewer grok     "$grok_model"     "$grok_timeout"; }
 # kimi27: same OpenAI-compatible single-turn body, direct Moonshot endpoint +
 # key. cli label "moonshot" selects the key source and lands in meta.json.
 run_kimi27()   { run_openrouter_reviewer kimi27   "$kimi27_model"   "$kimi27_timeout" \
@@ -1749,7 +1760,7 @@ stagger_s=2
 # 1-second 404 that reads like reviewer flakiness rather than stale config.
 for r in "${requested[@]}"; do
   case "$r" in
-    glm|deepseek|mimo|minimax|qwen|devstral|laguna|kat|north|nemotron|spark)
+    glm|deepseek|mimo|minimax|qwen|devstral|laguna|kat|north|nemotron|spark|seed|grok)
       bash "$script_dir/validate_or_models.sh" --no-fetch 2>&1 >/dev/null | head -5 >&2 || true
       break ;;
   esac
@@ -1806,7 +1817,7 @@ for r in "${requested[@]}"; do
         echo "kimi not installed — skipping" >&2
       fi
       ;;
-    glm|deepseek|mimo|minimax|qwen|devstral|laguna|kat|north|nemotron|spark)
+    glm|deepseek|mimo|minimax|qwen|devstral|laguna|kat|north|nemotron|spark|seed|grok)
       if ! command -v curl >/dev/null 2>&1; then
         echo "$r: curl not available — skipping" >&2
       elif openrouter_key >/dev/null 2>&1; then
@@ -1873,7 +1884,7 @@ for i in "${!pids[@]}"; do
         # failure_kind and the .agy.log tail are where the answer lives.
         echo "$name: failed (check failure_kind in $out/$name.meta.json; agy's own log: $out/$name.agy.log)" >&2 ;;
       kimi)        echo "$name: failed (see $out/kimi.stderr and $out/kimi.meta.json)" >&2 ;;
-      glm|deepseek|mimo|minimax|qwen|devstral|laguna|kat|north|nemotron|spark|kimi27|kimi3)
+      glm|deepseek|mimo|minimax|qwen|devstral|laguna|kat|north|nemotron|spark|seed|grok|kimi27|kimi3)
         echo "$name: failed (see $out/$name.stderr, $out/$name.response.json, $out/$name.meta.json)" >&2 ;;
       *)           echo "$name: failed (see $out/$name.* )" >&2 ;;
     esac
