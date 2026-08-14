@@ -13,22 +13,19 @@
 #                (lands at ~/.local/bin/agy). Auth: `agy login` once interactively.
 #
 # OpenRouter lane (rotating single-turn reviewers — NO fallbacks):
-#   glm      — z-ai/glm-5.2                        (Zhipu)
-#   deepseek — deepseek/deepseek-v4-pro-0813       (DeepSeek)
-#   mimo     — xiaomi/mimo-v2.5                    (Xiaomi)
-#   minimax  — minimax/minimax-m3                  (MiniMax)
-#   qwen     — qwen/qwen3-coder-next               (Alibaba)
-#   devstral — mistralai/devstral-2512             (Mistral)
-#   laguna   — poolside/laguna-m.1                 (Poolside)
-#   kat      — kwaipilot/kat-coder-pro-v2.5        (Kuaishou)
-#   north    — cohere/north-mini-code:free         (Cohere — free tier)
-#   nemotron — nvidia/nemotron-3.5-lightning:free  (NVIDIA — free tier)
-#   spark    — meta/muse-spark-1.1                 (Meta)
-#   seed     — bytedance-seed/seed-2.0-code       (ByteDance)
-#   grok     — x-ai/grok-4.6                      (xAI)
+#   glm (Zhipu), deepseek (DeepSeek), mimo (Xiaomi), minimax (MiniMax),
+#   qwen (Alibaba), devstral (Mistral), laguna (Poolside), kat (Kuaishou),
+#   north (Cohere, free), nemotron (NVIDIA, free), spark (Meta),
+#   seed (ByteDance), grok (xAI).
+#   Model IDs are DELIBERATELY not repeated here — see the note above
+#   `model_backed_reviewers` below: they live only in reviewer_profiles.json,
+#   because a slug list in a comment rots silently and misleads whoever comes
+#   to fix a rename. (It did: this block still named the delisted
+#   `mistralai/devstral-2512` and `poolside/laguna-m.1` months after the
+#   profile moved off them — caught by kat+grok, cross-review PR #55.)
 #   All are single-turn diff-inline reviews (same niche as kimi), each an
 #   independent provider vote. Key resolution: $OPENROUTER_API_KEY env var,
-#   else ~/.config/openrouter/key. No key → all eleven are skipped.
+#   else ~/.config/openrouter/key. No key → all thirteen are skipped.
 #
 #   POLICY (2026-07-01, per Gabriel): first-party reviewers (codex, the agy
 #   Gemini laps, kimi) do NOT fall back to OpenRouter — when agy hits its

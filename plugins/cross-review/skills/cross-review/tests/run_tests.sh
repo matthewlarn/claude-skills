@@ -391,25 +391,28 @@ assert_eq "second attempt recorded" "$(jq -r '.attempt' "$T/o7/glm.meta.json")" 
 rm -f "$T/bin/curl" "$T/curl_calls"
 
 # leaderboard: avg_cost_usd aggregates; roster draw halves a $0.50 reviewer
+# NOTE: both seats here MUST have no draw_boost in reviewer_profiles.json, or
+# the boost multiplier swamps the cost divisor this asserts. deepseek was the
+# control until it took a 2.5 boost on 2026-08-14; minimax replaced it.
 COSTLOG="$T/cost-runlog.jsonl"
 cat >"$COSTLOG" <<'EOF'
-{"ts":"2026-07-03T01:00:00Z","reviewers":{"glm":{"status":"ok","exit_code":0,"duration_s":50,"output_bytes":10,"timeout_budget_s":600,"cost_usd":0.5},"deepseek":{"status":"ok","exit_code":0,"duration_s":50,"output_bytes":10,"timeout_budget_s":600,"cost_usd":0}}}
-{"ts":"2026-07-03T02:00:00Z","reviewers":{"glm":{"status":"ok","exit_code":0,"duration_s":50,"output_bytes":10,"timeout_budget_s":600,"cost_usd":0.5},"deepseek":{"status":"ok","exit_code":0,"duration_s":50,"output_bytes":10,"timeout_budget_s":600,"cost_usd":0}}}
+{"ts":"2026-07-03T01:00:00Z","reviewers":{"glm":{"status":"ok","exit_code":0,"duration_s":50,"output_bytes":10,"timeout_budget_s":600,"cost_usd":0.5},"minimax":{"status":"ok","exit_code":0,"duration_s":50,"output_bytes":10,"timeout_budget_s":600,"cost_usd":0}}}
+{"ts":"2026-07-03T02:00:00Z","reviewers":{"glm":{"status":"ok","exit_code":0,"duration_s":50,"output_bytes":10,"timeout_budget_s":600,"cost_usd":0.5},"minimax":{"status":"ok","exit_code":0,"duration_s":50,"output_bytes":10,"timeout_budget_s":600,"cost_usd":0}}}
 EOF
 CLB="$(CROSS_REVIEW_RUNLOG="$COSTLOG" bash "$S/leaderboard.sh" --mode json)"
 assert_eq "leaderboard aggregates avg_cost_usd" \
   "$(jq -r '.[] | select(.reviewer=="glm") | .avg_cost_usd' <<<"$CLB")" "0.5"
 assert_eq "zero-cost reviewer stays 0" \
-  "$(jq -r '.[] | select(.reviewer=="deepseek") | .avg_cost_usd' <<<"$CLB")" "0"
+  "$(jq -r '.[] | select(.reviewer=="minimax") | .avg_cost_usd' <<<"$CLB")" "0"
 # identical twins except cost: expensive one draws at half weight
 CAND="$(CROSS_REVIEW_RUNLOG="$COSTLOG" bash "$S/select_roster.sh" --seed 5 2>&1 >/dev/null | grep '^  candidate')"
 W_GLM="$(printf '%s\n' "$CAND" | awk '$2=="glm" {sub(/weight=/,"",$NF); print $NF}')"
-W_DS="$(printf '%s\n' "$CAND" | awk '$2=="deepseek" {sub(/weight=/,"",$NF); print $NF}')"
+W_MM="$(printf '%s\n' "$CAND" | awk '$2=="minimax" {sub(/weight=/,"",$NF); print $NF}')"
 assert_contains "candidate line surfaces cost" "$CAND" 'cost=$'
-if [ -n "$W_GLM" ] && [ -n "$W_DS" ] && awk -v g="$W_GLM" -v d="$W_DS" 'BEGIN{exit !(g*1.9 < d*1.1 && g*2.1 > d*0.9)}'; then
-  ok "\$0.50/run reviewer draws at ~half weight ($W_GLM vs $W_DS)"
+if [ -n "$W_GLM" ] && [ -n "$W_MM" ] && awk -v g="$W_GLM" -v d="$W_MM" 'BEGIN{exit !(g*1.9 < d*1.1 && g*2.1 > d*0.9)}'; then
+  ok "\$0.50/run reviewer draws at ~half weight ($W_GLM vs $W_MM)"
 else
-  bad "cost divisor not applied in draw weight (glm=$W_GLM deepseek=$W_DS)"
+  bad "cost divisor not applied in draw weight (glm=$W_GLM minimax=$W_MM)"
 fi
 # [pin: PR #28 pass 2 (codex) — a zero/garbage COST_PIVOT_USD must not
 # divide-by-zero the draw or shrink the roster below the floor]
@@ -906,11 +909,13 @@ BOOST_ERR="$T/boost.err"
 CROSS_REVIEW_RUNLOG="$FIXLOG" bash "$S/select_roster.sh" --seed 42 >/dev/null 2>"$BOOST_ERR"
 assert_contains "selector draws kimi27 as a candidate" "$(cat "$BOOST_ERR")" "kimi27"
 # rookie base weight = max(50,15) * (1 + 0.5/sqrt(1)) / (1 + 0/240) = 75.0;
-# draw_boost retired to 1.0 → 75.0, identical to an unboosted rookie (nemotron).
+# draw_boost retired to 1.0 → 75.0, identical to an unboosted rookie (spark).
+# The control seat must carry NO draw_boost; nemotron held this role until it
+# took a 2.5 boost on 2026-08-14.
 assert_contains "kimi27 weight reflects the retired (1.0) draw_boost" \
   "$(grep 'kimi27' "$BOOST_ERR")" "weight=75.0"
 assert_contains "unboosted rookie weight unchanged" \
-  "$(grep 'nemotron' "$BOOST_ERR")" "weight=75.0"
+  "$(grep 'spark' "$BOOST_ERR")" "weight=75.0"
 # no Moonshot key (env cleared, sandbox HOME has no key file) → honest skip
 MOONSHOT_API_KEY= bash "$S/run_reviewers.sh" --base main --out "$T/o11" --reviewers kimi27 >/dev/null 2>"$T/k27skip.err"
 assert_eq "kimi27 without a key exits 1 (all requested reviewers failed)" "$?" "1"

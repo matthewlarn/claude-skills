@@ -18,7 +18,7 @@
 #
 # The OpenRouter pool (glm, deepseek, mimo, minimax, qwen, devstral, laguna,
 # kat, north, nemotron, spark, seed, grok)
-# runs via the OpenRouter API — no CLI; all eleven track the same condition:
+# runs via the OpenRouter API — no CLI; all thirteen track the same condition:
 # an OpenRouter key ($OPENROUTER_API_KEY or ~/.config/openrouter/key) + curl.
 # `openrouter` reports that shared condition. NOTE: there is NO OpenRouter
 # fallback for the first-party reviewers (policy, 2026-07-01) — a failed agy
