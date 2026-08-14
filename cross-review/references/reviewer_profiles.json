@@ -2,7 +2,7 @@
   "$schema": "./reviewer_profiles.schema.md",
   "_doc": "Per-reviewer behavioral profile. Read by run_reviewers.sh (timeout, retry, model), the SKILL.md synthesis step (severity_priors, synthesis_weight), and analyze_runlog.sh (suggests edits to this file). Tune values here, not in scattered defaults. Edit notes/specialization freely; numeric tuning is best driven by analyze_runlog.sh suggestions over real runs. NOTE: antigravity and gemini-pro are BOTH served by Google's `agy` (Antigravity) CLI as of the 2026-06-18 Gemini-CLI sunset \u2014 the only difference is the --model value. The `model` field here MUST be the exact display-name string `agy models` prints (e.g. \"Gemini 3.1 Pro (High)\"); agy silently falls back to its default (Flash) on an unrecognized model string instead of erroring.",
   "codex": {
-    "timeout_s": 300,
+    "timeout_s": 900,
     "provider": "openai",
     "baseline": true,
     "retry_policy": "none",
@@ -13,8 +13,8 @@
       "P3": "skip_unless_convergent"
     },
     "synthesis_weight": 1.0,
-    "specialization": "general \u2014 fast-or-fail; agentic file roaming with built-in review prompt",
-    "notes": "Reliable in observed runs (4/4 most rounds). Treat solo P1 as near-certain real. Output sometimes truncates on very long sessions \u2014 surface the truncation in the runlog rather than retrying."
+    "specialization": "general \u2014 agentic file roaming with built-in review prompt; roams before it reports, so duration scales with repo surface, not diff size",
+    "notes": "Reliable in observed runs (4/4 most rounds). Treat solo P1 as near-certain real. Output sometimes truncates on very long sessions \u2014 surface the truncation in the runlog rather than retrying. timeout_s 300 \u2192 900 on 2026-08-14, per Gabriel: the 300s budget was set on a 'fast-or-fail' read that no longer holds. On a 268-line, 18-file diff codex burned the full 300s producing 224KB of context-gathering log and no review at all \u2014 it is agentic, so it explores the repo before writing anything, and the budget cut it off mid-exploration. A timeout that lands before the reviewer has said one word is not a tuning signal, it is a lost baseline seat."
   },
   "antigravity": {
     "timeout_s": 600,

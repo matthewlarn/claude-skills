@@ -56,11 +56,13 @@
 # baselines, ≥3 total, leaderboard-weighted rotation picks). Explicit
 # --reviewers bypasses rotation entirely.
 #
-# Per-reviewer timeouts override the global --timeout. Codex tends to either
-# return fast or fail fast; antigravity/gemini-pro/kimi do deep reasoning and
-# need more headroom. Default policy: codex=300, antigravity=600, gemini-pro=900,
-# kimi=600. The previous 300s blanket cap truncated dense-logic diffs
-# (see PR #1985 postmortem).
+# Per-reviewer timeouts override the global --timeout. antigravity/gemini-pro/
+# kimi do deep reasoning and need headroom; codex roams the repo agentically
+# before it writes anything, so it needs headroom for a different reason.
+# Default policy: codex=900, antigravity=600, gemini-pro=900, kimi=600. The
+# previous 300s blanket cap truncated dense-logic diffs (see PR #1985
+# postmortem), and codex's own 300s tightening was retired 2026-08-14 after it
+# spent the entire budget exploring an 18-file diff and returned no review.
 #
 # --snapshot-dir <dir>: for each dispatched reviewer <r> that builds its own
 # text prompt (kimi, the OpenRouter pool, and the two agy laps), if
@@ -146,8 +148,9 @@ snapshot_dir=""
 # rotation picks); if the selector is missing, fall back to the fixed classic
 # fleet. Passing --reviewers explicitly always wins.
 reviewers=""
-# Global timeout default: 600s. Codex tightens to 300s below since it returns
-# fast or fails fast. Antigravity/kimi keep 600s, gemini-pro gets 900s — the
+# Global timeout default: 600s. Codex widens to 900s below (it was tightened to
+# 300s until 2026-08-14 on a "returns fast or fails fast" read that its agentic
+# roaming disproved). Antigravity/kimi keep 600s, gemini-pro gets 900s — the
 # dense-logic diff in PR #1985 (postmortem in plans/the-miss-on-pr-eager-pond.md)
 # blew through 300s on the prior gemini Flash reviewer, so we keep the bumped
 # budget on its agy replacements.
@@ -233,7 +236,7 @@ fi
 #   1. --timeout-<reviewer>      (per-reviewer CLI flag, explicit)
 #   2. --timeout                 (global CLI flag, explicit)
 #   3. references/reviewer_profiles.json `.timeout_s`
-#   4. timeout_s_default (with codex tightened to 300s, gemini-pro to 900s)
+#   4. timeout_s_default (with codex widened to 900s, gemini-pro to 900s)
 # This matches standard Unix conventions — explicit CLI always wins. The
 # previous order put profile above --timeout, which silently broke
 # `--timeout 30` smoke runs (caught by codex review on PR #10).
@@ -275,7 +278,7 @@ seed_profile="$(profile_timeout seed)"
 grok_profile="$(profile_timeout grok)"
 kimi27_profile="$(profile_timeout kimi27)"
 kimi3_profile="$(profile_timeout kimi3)"
-codex_timeout="${timeout_codex:-${timeout_s:-${codex_profile:-$(( timeout_s_default < 300 ? timeout_s_default : 300 ))}}}"
+codex_timeout="${timeout_codex:-${timeout_s:-${codex_profile:-$(( timeout_s_default > 900 ? timeout_s_default : 900 ))}}}"
 antigravity_timeout="${timeout_antigravity:-${timeout_s:-${antigravity_profile:-$timeout_s_default}}}"
 # gemini-pro defaults to a longer budget than Flash: Pro's deeper reasoning
 # routinely runs 2-3x longer than Flash on the same diff.
