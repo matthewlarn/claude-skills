@@ -112,6 +112,40 @@ if [[ "$mode" == "summary" ]]; then
   fi
 fi
 
+# --head-sha is REQUIRED to post. It used to be optional, which meant the
+# stamp was optional, which meant it was not a stamp: half the sampled review
+# comments on 2026-08-14 carried no sha at all, and a review record that cannot
+# say which commit it covered is indistinguishable from no review. Refusing to
+# post is the right failure — the findings are still on disk at $findings, and
+# the caller re-runs with the sha rather than leaving an unverifiable record on
+# a PR someone will merge past.
+#
+# Scoped to `summary`. `file` and `none` modes write nothing to GitHub, so they
+# create no unstampable record and keep working exactly as before.
+if [[ "$mode" == "summary" && -z "$head_sha" ]]; then
+  write_posted false "no-head-sha"
+  echo "ERROR: --head-sha is required to post a review comment." >&2
+  echo "  A record with no commit stamp cannot be verified by scripts/cross-review-currency.sh," >&2
+  echo "  and reads as authoritative about whatever the PR contains later." >&2
+  echo "  Re-run with: --head-sha \"\$(git rev-parse HEAD)\"" >&2
+  echo "  Findings preserved at: $findings" >&2
+  exit 2
+fi
+
+# The marker contract is a full 40-char sha. Callers that pass an abbreviation
+# are not wrong — the prose stamp has always accepted one, and the gate still
+# does — so expand it when git can, and degrade to prose-only rather than
+# refusing to post. Backward compatibility matters here: this script is shared
+# by concurrent sessions and an abbreviated sha must not start failing runs.
+if [[ -n "$head_sha" && ! "$head_sha" =~ ^[0-9a-f]{40}$ ]]; then
+  expanded="$(git rev-parse "$head_sha" 2>/dev/null || true)"
+  if [[ "$expanded" =~ ^[0-9a-f]{40}$ ]]; then
+    head_sha="$expanded"
+  else
+    echo "WARN: --head-sha '$head_sha' is not a full 40-char sha and could not be expanded — posting with the prose stamp only" >&2
+  fi
+fi
+
 case "$mode" in
   summary)
     # Template + rc check (issue #7 nit): BSD/GNU mktemp default templates
@@ -149,6 +183,28 @@ case "$mode" in
     # `jq` is unavailable the comment still posts, just without the banner.
     provenance=""
     [[ -n "$head_sha" ]] && provenance="Reviewed \`${head_sha:0:9}\`."
+
+    # THE MACHINE-WRITTEN STAMP.
+    #
+    # The provenance line above is for people, and for a while it was also the
+    # only thing scripts/cross-review-currency.sh could read. Prose drifts: on
+    # 2026-08-14 four open PRs (#3376, #3374, #3371, #3362) carried "Reviewed
+    # at `<sha>`" — composed by a model rather than by this script — and the
+    # gate rejected all four over the word "at", while each one was reviewed at
+    # its exact current head. Four more (#3369, #3367, #3363, #3073) carried no
+    # sha at all.
+    #
+    # So the record now also carries a marker no one writes by hand. One line,
+    # full 40-char sha, invisible in rendered markdown. The gate reads this
+    # first and falls back to the prose only for comments posted before it
+    # existed. Keep the shape byte-stable: CR_MARKER_RE in
+    # scripts/cross-review-currency.sh matches it literally.
+    # Only a full-width sha earns a marker; an unexpandable abbreviation was
+    # warned about above and rides on the prose stamp, which the gate still
+    # accepts. Emitting a short sha here would produce a marker the gate's
+    # regex rejects, which is worse than not emitting one.
+    marker=""
+    [[ "$head_sha" =~ ^[0-9a-f]{40}$ ]] && marker="<!-- cross-review: sha=${head_sha} pass=${pass} -->"
     staleness=""
     if command -v jq >/dev/null 2>&1; then
       pr_meta="$(gh pr view "$pr" ${gh_repo[@]+"${gh_repo[@]}"} --json headRefOid,state 2>/dev/null || true)"
@@ -168,6 +224,7 @@ case "$mode" in
 
     {
       printf '## Cross-review — pass %s\n\n' "$pass"
+      [[ -n "$marker" ]] && printf '%s\n\n' "$marker"
       [[ -n "$staleness" ]] && printf '%s' "$staleness"
       printf '_Automated review by %s.%s See the "Findings" collapsible for specifics._\n\n' "$roster_line" "${provenance:+ $provenance}"
       printf '<details><summary>Findings</summary>\n\n'

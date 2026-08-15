@@ -41,6 +41,35 @@ Prints JSON like `{"codex": true, "antigravity": true, "gemini-pro": true, "kimi
 
 Do not proceed with zero reviewers. (The standalone `gemini` CLI is no longer used — it was retired in the 2026-06-18 Gemini-CLI consumer sunset; both Gemini reviewers now run on `agy`.)
 
+#### Baselines fail closed
+
+`codex` and `kimi` are **fixed baselines**, not rotating seats. If either is
+unavailable, `detect_reviewers.sh` prints its JSON as usual and then **exits 1**.
+Callers must treat a non-zero exit as "do not run a round."
+
+This used to be advisory — a missing baseline just reported `false` and the round
+proceeded a reviewer short while looking perfectly healthy. On 2026-08-14 `codex`
+fell off `$PATH` in kindred-mama-ai and **nine consecutive rounds ran without it**
+before anyone noticed, because a missing verifier and a passing verification are
+indistinguishable from the outside. The exit code is now the binding signal.
+
+The usual cause is PATH, not a missing install. `codex` and `kimi` are npm globals
+under `$NVM_DIR/versions/node/<version>/bin`, and nvm is a shell function from your
+rc file that never runs in a non-interactive shell. The script resolves that
+directory itself (via `alias/default`, falling back to the newest installed
+version), so a correct install should just work — check `which codex` before
+assuming otherwise.
+
+To run degraded on purpose, make it explicit at the call site:
+
+```bash
+CROSS_REVIEW_ALLOW_MISSING_BASELINE=1 bash ~/.claude/skills/cross-review/scripts/detect_reviewers.sh
+```
+
+That downgrades the failure to a stderr warning. Use it for a deliberate
+single-reviewer spot check, never as a default in a wrapper — a default there
+recreates exactly the silence this replaced.
+
 > **Do not retire the Gemini seats on a `gemini` CLI error.** Running `gemini` by hand now fails with `IneligibleTierError: This client is no longer supported for Gemini Code Assist for individuals` (`reasonCode: UNSUPPORTED_CLIENT`, `tierId: free-tier`). That is the **retired client** refusing to start — it says nothing about the seats this skill actually uses, and the error text itself names the migration target (`antigravity.google`) that `agy` already is. Verified live 2026-07-20: with `gemini` in that state, `agy -p` returns normal output and `agy models` lists Gemini 3.5 Flash + Gemini 3.1 Pro. **The only authority on Gemini-seat availability is `detect_reviewers.sh`** (which probes `agy`, never `gemini`). If it reports `"antigravity": true` / `"gemini-pro": true`, the seats are live — do not hand-drop the round to fewer reviewers.
 >
 > Corollary for the failure path: an agy lap that returns zero bytes is **not** automatically a dead seat. Check `failure_kind` in its `meta.json` — `headless_permission_denied` means the seat is authed and in quota but a tool confirmation was auto-denied; `print_timeout` (rc=1, stderr `Error: timeout waiting for response`) means agy's own `--print-timeout` expired and the remedy is a bigger `--timeout-<slug>`, since Gemini 3.1 Pro at High effort routinely needs 300-400s; only bare `empty_output` points at expired `agy login`. Each attempt's artifacts are kept at `<slug>.attempt<N>.{stdout,stderr,meta.json,agy.log}` — read attempt 1's when a lap only succeeded on retry.
@@ -408,12 +437,46 @@ bash ~/.claude/skills/cross-review/scripts/post_comment.sh \
   --repo "$(jq -r .repo "$run_dir/context.json")"
 ```
 
-**Always pass `--head-sha`.** It stamps the record with the commit actually
-reviewed and compares it against the PR's live head at post time, emitting a
-warning banner when they differ or when the PR is already merged/closed. Both
-checks fail open — a missing `gh`/`jq` just drops the banner. Read it from
-`context.json` (`jq -r .head_sha "$run_dir/context.json"`) rather than
-re-resolving the ref, so the stamp matches what the reviewers actually saw.
+**`--head-sha` is required in `summary` mode, and the script now enforces it.**
+It used to be optional with this paragraph asking nicely, which meant the stamp
+was optional, which meant it was not a stamp. Omit it and `post_comment.sh`
+exits 2 without posting; the findings stay on disk and `posted.json` records
+`no-head-sha`, so re-running with the sha is the fix. `file` and `none` modes
+are unaffected, because they write nothing to GitHub.
+
+Read it from `context.json` (`jq -r .head_sha "$run_dir/context.json"`) rather
+than re-resolving the ref, so the stamp matches what the reviewers actually saw.
+Pass the full 40 characters. The script expands an abbreviation via
+`git rev-parse` when it can, and warns and falls back to the prose stamp when it
+cannot.
+
+#### The marker contract
+
+`post_comment.sh` writes two stamps into every posted comment. They are not
+redundant; they have different readers.
+
+```
+<!-- cross-review: sha=<40-char-sha> pass=<n> -->     ← the gate reads this
+_Automated review by codex + kimi. Reviewed `abc123def`._   ← people read this
+```
+
+The HTML comment is the contract. `scripts/cross-review-currency.sh` in
+kindred-mama-ai matches it with `CR_MARKER_RE` and prefers it over the prose
+whenever both are present, because the marker is machine-written and the prose
+is not. Keep its shape byte-stable: single line, invisible in rendered
+markdown, full 40-char sha, `pass=` second.
+
+The gate still accepts the prose forms — both `` Reviewed `sha` `` and
+`` Reviewed at `sha` `` — as a fallback, so comments posted before the marker
+existed keep working. Do not rely on that when composing a comment by hand.
+On 2026-08-14 a census of the ten most recent cross-review comments on open PRs
+found four (#3376, #3374, #3371, #3362) that had been reviewed at their exact
+current head and were rejected by the gate because a model had written
+"Reviewed at" where the script writes "Reviewed", and four more (#3369, #3367,
+#3363, #3073) carrying no sha at all. That is the whole reason the marker
+exists: **post the comment through `post_comment.sh` rather than composing the
+body yourself.** A hand-written comment carries no marker and is at the mercy of
+one English word.
 
 **Do not skip this step.** `post_comment.sh` writes `$run_dir/posted.json` on
 every terminal path — `posted`, `gh-comment-failed`, `gh-unavailable-or-no-pr`,
